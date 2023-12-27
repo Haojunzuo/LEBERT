@@ -14,7 +14,7 @@ def get_argparse():
 
     ## for from_pretrained parameters
     parser.add_argument("--model_name_or_path", default="/mnt/cjhb/NER/LEBERT/data/berts/bert", type=str, help="the pretrained bert path")
-    parser.add_argument("--model_type", default="WCBert_Token", type=str,
+    parser.add_argument("--model_type", default="WCBertCRF_Token", type=str,
                         help="Bert_Token, BertCRF_Token, BertBiLSTMCRF_Token, WCBert_Token, WC....")
     parser.add_argument("--config_name", default="data/berts/bert/config.json", type=str, help="the config of define model")
     parser.add_argument("--vocab_file", default="data/berts/bert/vocab.txt", type=str, help="the vocab file for bert")
