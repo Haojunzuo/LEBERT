@@ -7,27 +7,27 @@ import argparse
 def get_argparse():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--data_dir", default="data/dataset/NER", type=str, help="The input data dir")
+    parser.add_argument("--data_dir", default="data/dataset/NER/weibo", type=str, help="The input data dir")
     parser.add_argument("--output_dir", default="data/result", type=str, help="the output dir")
     parser.add_argument("--overwrite_cache", default=True, help="overwrite the cache or not")
     parser.add_argument("--logging_dir", default='data/log', type=str, help="the dir for log")
 
     ## for from_pretrained parameters
-    parser.add_argument("--model_name_or_path", default=None, type=str, help="the pretrained bert path")
-    parser.add_argument("--model_type", default="Bert_Token", type=str,
+    parser.add_argument("--model_name_or_path", default="/mnt/cjhb/NER/LEBERT/data/berts/bert", type=str, help="the pretrained bert path")
+    parser.add_argument("--model_type", default="WCBert_Token", type=str,
                         help="Bert_Token, BertCRF_Token, BertBiLSTMCRF_Token, WCBert_Token, WC....")
     parser.add_argument("--config_name", default="data/berts/bert/config.json", type=str, help="the config of define model")
     parser.add_argument("--vocab_file", default="data/berts/bert/vocab.txt", type=str, help="the vocab file for bert")
     parser.add_argument("--word_vocab_file", default="data/vocab/final_vocab.txt", type=str)
-    parser.add_argument("--label_file", default="data/dataset/NER/label.txt", type=str)
+    parser.add_argument("--label_file", default="data/dataset/NER/weibo/labels.txt", type=str)
     parser.add_argument("--default_label", default='O', type=str)
     parser.add_argument("--word_embedding", default="data/embedding/word_embedding.txt",
                         help="the embedding file path")
     parser.add_argument("--saved_embedding_dir", default="data/embedding", type=str)
 
-    parser.add_argument("--do_train", default=False, action="store_true", help="Whether to run training.")
-    parser.add_argument("--do_eval", default=False, action="store_true", help="Whether to do evaluation")
-    parser.add_argument("--do_predict", default=False, action="store_true")
+    parser.add_argument("--do_train", default=True, action="store_true", help="Whether to run training.")
+    parser.add_argument("--do_eval", default=True, action="store_true", help="Whether to do evaluation")
+    parser.add_argument("--do_predict", default=True, action="store_true")
     parser.add_argument("--evaluate_during_training", default=False, action="store_true",
                         help="Whether do evuation during training.")
     parser.add_argument("--max_seq_length", default=48, type=int, help="the max length of input sequence")
