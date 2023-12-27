@@ -13,6 +13,8 @@ import math
 import os
 import random
 import time
+
+from apex.amp import scaler
 from packaging import version
 import pickle
 
@@ -23,6 +25,7 @@ import torch.nn as nn
 from datetime import datetime
 import torch.multiprocessing as mp
 import torch.distributed as dist
+from torch.cuda.amp import autocast
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.distributed import DistributedSampler
@@ -97,16 +100,20 @@ def get_dataloader(dataset, args, mode='train'):
         mode: train or non-train
     """
     print("Dataset length: ", len(dataset))
-    if args.local_rank != -1:
-        if mode == 'train':
-            sampler = SequentialDistributedSampler(dataset, do_shuffle=True)
-        else:
-            sampler = SequentialDistributedSampler(dataset)
+    # if args.local_rank != -1:
+    #     if mode == 'train':
+    #         sampler = SequentialDistributedSampler(dataset, do_shuffle=True)
+    #     else:
+    #         sampler = SequentialDistributedSampler(dataset)
+    # else:
+    #     if mode == 'train':
+    #         sampler = SequentialSampler(dataset)
+    #     else:
+    #         sampler = SequentialSampler(dataset)
+    if mode == 'train':
+        sampler = SequentialSampler(dataset)
     else:
-        if mode == 'train':
-            sampler = SequentialSampler(dataset)
-        else:
-            sampler = SequentialSampler(dataset)
+        sampler = SequentialSampler(dataset)
     if mode == 'train':
         batch_size = args.per_gpu_train_batch_size
     else:
@@ -210,14 +217,14 @@ def train(model, args, train_dataset, dev_dataset, test_dataset, label_vocab, tb
         )
         scheduler.load_state_dict(torch.load(os.path.join(model_path, "scheduler.pt")))
 
-    if args.local_rank != -1:
-        model = model.cuda()
-        model = torch.nn.parallel.DistributedDataParallel(
-            model,
-            device_ids=[args.local_rank],
-            output_device=args.local_rank,
-            find_unused_parameters=True
-        )
+    # if args.local_rank != -1:
+    #     model = model.cuda()
+    #     model = torch.nn.parallel.DistributedDataParallel(
+    #         model,
+    #         device_ids=[args.local_rank],
+    #         output_device=args.local_rank,
+    #         find_unused_parameters=True
+    #     )
 
     ## 3.begin train
     total_train_batch_size = args.per_gpu_train_batch_size * args.gradient_accumulation_steps
@@ -482,17 +489,17 @@ def main():
     args.no_cuda = not torch.cuda.is_available()
 
     ########### for multi-gpu training ##############
-    if torch.cuda.is_available() and args.local_rank != -1:
-        args.n_gpu = 1
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device('cuda', args.local_rank)
-        torch.distributed.init_process_group(backend='nccl', init_method='env://')
-    else:
-        device = torch.device("cpu")
-        args.n_gpu = 0
+    # if torch.cuda.is_available() and args.local_rank != -1:
+    #     args.n_gpu = 1
+    #     torch.cuda.set_device(args.local_rank)
+    #     device = torch.device('cuda', args.local_rank)
+    #     torch.distributed.init_process_group(backend='nccl', init_method='env://')
+    # else:
+    #     device = torch.device("cpu")
+    #     args.n_gpu = 0
     #################################################
 
-    args.device = device
+    args.device = torch.device("cuda:1" if torch.cuda.is_available() and args.device == 'gpu' else "cpu")
     logger.info(
         "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
         args.local_rank,
@@ -550,9 +557,10 @@ def main():
             pretrained_embeddings=pretrained_word_embedding,
             num_labels=label_vocab.get_item_size()
         )
+    model = model.to(args.device)
 
-    if not args.no_cuda:
-        model = model.cuda()
+    # if not args.no_cuda:
+    #     model = model.cuda()
     args.label_size = label_vocab.get_item_size()
     dataset_params = {
         'tokenizer': tokenizer,
@@ -569,7 +577,7 @@ def main():
         train_dataset = TaskDataset(train_data_file, params=dataset_params, do_shuffle=args.do_shuffle)
         dev_dataset = TaskDataset(dev_data_file, params=dataset_params, do_shuffle=False)
         test_dataset = TaskDataset(test_data_file, params=dataset_params, do_shuffle=False)
-        args.model_name_or_path = None
+        # args.model_name_or_path = None
         train(model, args, train_dataset, dev_dataset, test_dataset, label_vocab, tb_writer)
 
     if args.do_eval:

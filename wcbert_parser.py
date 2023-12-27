@@ -33,7 +33,7 @@ def get_argparse():
     parser.add_argument("--max_seq_length", default=48, type=int, help="the max length of input sequence")
     parser.add_argument("--per_gpu_train_batch_size", default=4, type=int,  help="the training batch size")
     parser.add_argument("--per_gpu_eval_batch_size", default=4, type=int, help="the eval batch size")
-    parser.add_argument("--num_train_epochs", default=2, type=int, help="training epoch, only work when max_step==-1")
+    parser.add_argument("--num_train_epochs", default=15, type=int, help="training epoch, only work when max_step==-1")
     parser.add_argument("--learning_rate", default=1e-4, type=float, help="The initial learning rate for Adam")
     parser.add_argument("--weight_decay", default=0.0, type=float, help="the weight of L2 normalization")
     parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer")
@@ -63,8 +63,9 @@ def get_argparse():
                         help="the total number of nodes(machines) we are going to use")
     parser.add_argument("--n_gpu", default=1, type=int,
                         help="ranking within the nodes")
-    parser.add_argument("--local_rank", default=-1, type=int,
+    parser.add_argument("--local_rank", default=0, type=int,
                         help="the rank of current node within all nodes, goes from 0 to args.nodes-1")
 
+    parser.add_argument("--device", type=str, default='gpu', choices=['gpu', 'cpu'], help="gpu or cpu")
 
     return parser
