@@ -18,7 +18,7 @@ def get_argparse():
                         help="Bert_Token, BertCRF_Token, BertBiLSTMCRF_Token, WCBert_Token, WC....")
     parser.add_argument("--config_name", default="data/berts/bert/config.json", type=str, help="the config of define model")
     parser.add_argument("--vocab_file", default="data/berts/bert/vocab.txt", type=str, help="the vocab file for bert")
-    parser.add_argument("--word_vocab_file", default="data/vocab/final_vocab.txt", type=str)
+    parser.add_argument("--word_vocab_file", default="data/vocab/tecent_vocab.txt", type=str)
     parser.add_argument("--label_file", default="data/dataset/NER/weibo/labels.txt", type=str)
     parser.add_argument("--default_label", default='O', type=str)
     parser.add_argument("--word_embedding", default="data/embedding/word_embedding.txt",
@@ -67,5 +67,7 @@ def get_argparse():
                         help="the rank of current node within all nodes, goes from 0 to args.nodes-1")
 
     parser.add_argument("--device", type=str, default='gpu', choices=['gpu', 'cpu'], help="gpu or cpu")
+    parser.add_argument("--radical_embed_path", type=str,
+                        default='data/radical/max_pool_radical_tencent_1219.vec', help='radical 嵌入')
 
     return parser
