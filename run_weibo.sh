@@ -21,4 +21,4 @@ nohup python Trainer.py --do_train --do_eval --do_predict --evaluate_during_trai
           --num_train_epochs=20 \
           --warmup_steps=190 \
           --save_steps=600 \
-          --logging_steps=100 > resLogs/weibo-2.log 2>&1 &
+          --logging_steps=100 > resLogs/weibo-3.log 2>&1 &

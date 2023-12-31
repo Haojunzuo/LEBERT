@@ -18,7 +18,7 @@ def get_argparse():
                         help="Bert_Token, BertCRF_Token, BertBiLSTMCRF_Token, WCBert_Token, WC....")
     parser.add_argument("--config_name", default="data/berts/bert/config.json", type=str, help="the config of define model")
     parser.add_argument("--vocab_file", default="data/berts/bert/vocab.txt", type=str, help="the vocab file for bert")
-    parser.add_argument("--word_vocab_file", default="data/vocab/tecent_vocab.txt", type=str)
+    parser.add_argument("--word_vocab_file", default="data/vocab/tencent_vocab.txt", type=str)
     parser.add_argument("--label_file", default="data/dataset/NER/weibo/labels.txt", type=str)
     parser.add_argument("--default_label", default='O', type=str)
     parser.add_argument("--word_embedding", default="data/embedding/word_embedding.txt",
@@ -33,7 +33,7 @@ def get_argparse():
     parser.add_argument("--max_seq_length", default=48, type=int, help="the max length of input sequence")
     parser.add_argument("--per_gpu_train_batch_size", default=4, type=int,  help="the training batch size")
     parser.add_argument("--per_gpu_eval_batch_size", default=4, type=int, help="the eval batch size")
-    parser.add_argument("--num_train_epochs", default=15, type=int, help="training epoch, only work when max_step==-1")
+    parser.add_argument("--num_train_epochs", default=1, type=int, help="training epoch, only work when max_step==-1")
     parser.add_argument("--learning_rate", default=1e-4, type=float, help="The initial learning rate for Adam")
     parser.add_argument("--weight_decay", default=0.0, type=float, help="the weight of L2 normalization")
     parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer")

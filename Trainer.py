@@ -45,7 +45,7 @@ from feature.task_dataset import TaskDataset
 from feature.vocab import ItemVocabFile, ItemVocabArray
 from function.metrics import seq_f1_with_mask
 from function.preprocess import build_lexicon_tree_from_vocabs, get_corpus_matched_word_from_lexicon_tree, insert_seg_vocab_to_lexicon_tree
-from function.utils import build_pretrained_embedding_for_corpus, save_preds_for_seq_labelling
+from function.utils import build_pretrained_embedding_for_corpus, save_preds_for_seq_labelling, build_radical_embeddings
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -276,12 +276,12 @@ def train(model, args, train_dataset, dev_dataset, test_dataset, label_vocab, tb
 
             # new batch data: [input_ids, token_type_ids, attention_mask, matched_word_ids,
             # matched_word_mask, boundary_ids, labels
-            batch_data = (batch[0], batch[2], batch[1], batch[3], batch[4], batch[5], batch[6])
+            batch_data = (batch[0], batch[1], batch[2], batch[3], batch[4], batch[5], batch[6], batch[7])
             new_batch = batch_data
             batch = tuple(t.to(args.device) for t in new_batch)
-            inputs = {"input_ids": batch[0], "attention_mask": batch[1], "token_type_ids": batch[2],
-                      "matched_word_ids": batch[3], "matched_word_mask": batch[4],
-                      "boundary_ids": batch[5], "labels": batch[6], "flag": "Train"}
+            inputs = {"input_ids": batch[0], "radical_ids": batch[1], "token_type_ids": batch[2], "attention_mask": batch[3],
+                      "matched_word_ids": batch[4], "matched_word_mask": batch[5],
+                      "boundary_ids": batch[6], "labels": batch[7], "flag": "Train"}
             batch_data = None
             new_batch = None
 
@@ -437,12 +437,12 @@ def evaluate(model, args, dataset, label_vocab, global_step, description="dev", 
     for batch in tqdm(dataloader, desc=description):
         # new batch data: [input_ids, token_type_ids, attention_mask, matched_word_ids,
         # matched_word_mask, boundary_ids, labels
-        batch_data = (batch[0], batch[2], batch[1], batch[3], batch[4], batch[5], batch[6])
+        batch_data = (batch[0], batch[1], batch[2], batch[3], batch[4], batch[5], batch[6], batch[7])
         new_batch = batch_data
         batch = tuple(t.to(args.device) for t in new_batch)
-        inputs = {"input_ids": batch[0], "attention_mask": batch[1], "token_type_ids": batch[2],
-                  "matched_word_ids": batch[3], "matched_word_mask": batch[4],
-                  "boundary_ids": batch[5], "labels": batch[6], "flag": "Predict"}
+        inputs = {"input_ids": batch[0], "radical_ids": batch[1], "token_type_ids": batch[2], "attention_mask": batch[3],
+                  "matched_word_ids": batch[4], "matched_word_mask": batch[5],
+                  "boundary_ids": batch[6], "labels": batch[7], "flag": "Predict"}
         batch_data = None
         new_batch = None
 
@@ -451,10 +451,10 @@ def evaluate(model, args, dataset, label_vocab, global_step, description="dev", 
             preds = outputs[0]
 
         input_ids = batch[0].detach().cpu().numpy()
-        label_ids = batch[6].detach().cpu().numpy()
+        label_ids = batch[7].detach().cpu().numpy()
 
         pred_ids = preds.detach().cpu().numpy()
-        attention_mask = batch[1].detach().cpu().numpy()
+        attention_mask = batch[3].detach().cpu().numpy()
         if all_label_ids is None:
             all_input_ids = input_ids
             all_label_ids = label_ids
@@ -499,7 +499,7 @@ def main():
     #     args.n_gpu = 0
     #################################################
 
-    args.device = torch.device("cuda:1" if torch.cuda.is_available() and args.device == 'gpu' else "cpu")
+    args.device = torch.device("cuda:0" if torch.cuda.is_available() and args.device == 'gpu' else "cpu")
     logger.info(
         "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
         args.local_rank,
@@ -543,6 +543,8 @@ def main():
         max_scan_num=args.max_scan_num,
         saved_corpus_embedding_dir=args.saved_embedding_dir,
     )
+    # load radical embeddings
+    radical_embeddings, radical_vocab, radical_embed_dim = build_radical_embeddings(embedding_path = args.radical_embed_path)
 
     # d. define model
     config = BertConfig.from_pretrained(args.config_name)
@@ -550,7 +552,9 @@ def main():
         model = WCBertCRFForTokenClassification.from_pretrained(
             args.model_name_or_path, config=config,
             pretrained_embeddings=pretrained_word_embedding,
-            num_labels=label_vocab.get_item_size())
+            num_labels=label_vocab.get_item_size(),
+            pretrained_radical_embeddings = radical_embeddings
+        )
     elif args.model_type == "BertWordLSTMCRF_Token":
         model = BertWordLSTMCRFForTokenClassification.from_pretrained(
             args.model_name_or_path, config=config,
@@ -565,6 +569,7 @@ def main():
     dataset_params = {
         'tokenizer': tokenizer,
         'word_vocab': word_vocab,
+        'radical_vocab': radical_vocab,
         'label_vocab': label_vocab,
         'lexicon_tree': lexicon_tree,
         'max_seq_length': args.max_seq_length,

@@ -37,7 +37,7 @@ class CRF(nn.Module):
         # # transitions (f_tag_size, t_tag_size), transition value from f_tag to t_tag
         init_transitions = torch.zeros(self.tagset_size + 2, self.tagset_size + 2)
         if self.gpu:
-            init_transitions = init_transitions.cuda(1)
+            init_transitions = init_transitions.cuda(0)
         self.transitions = nn.Parameter(init_transitions)
 
     def _calculate_PZ(self, feats, mask):
@@ -123,7 +123,7 @@ class CRF(nn.Module):
         _, last_bp = torch.max(last_values, 1)
         pad_zero = torch.zeros(batch_size, tag_size).long()
         if self.gpu:
-            pad_zero = pad_zero.cuda(1)
+            pad_zero = pad_zero.cuda(0)
         back_points.append(pad_zero)
         back_points = torch.cat(back_points).view(seq_len, batch_size, tag_size)
 
@@ -136,7 +136,7 @@ class CRF(nn.Module):
         # decode_idx = autograd.Variable(torch.LongTensor(seq_len, batch_size))
         decode_idx = torch.zeros(seq_len, batch_size)
         if self.gpu:
-            decode_idx = decode_idx.cuda(1)
+            decode_idx = decode_idx.cuda(0)
         decode_idx[-1] = pointer.data
         for idx in range(len(back_points) - 2, -1, -1):
             pointer = torch.gather(back_points[idx], 1, pointer.contiguous().view(batch_size, 1))
@@ -165,7 +165,7 @@ class CRF(nn.Module):
         # new_tags = autograd.Variable(torch.LongTensor(batch_size, seq_len))
         new_tags = torch.zeros(batch_size, seq_len)
         if self.gpu:
-            new_tags = new_tags.cuda(1)
+            new_tags = new_tags.cuda(0)
         for idx in range(seq_len):
             if idx == 0:
                 new_tags[:, 0] = (tag_size - 2) * tag_size + tags[:, 0]

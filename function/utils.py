@@ -10,6 +10,9 @@ from tqdm import tqdm, trange
 import torch
 import pickle
 
+from feature.vocab import ItemVocabArray
+
+
 def load_pretrain_embed(embedding_path, max_scan_num=1000000, add_seg_vocab=False):
     """
     从pretrained word embedding中读取前max_scan_num的词向量
@@ -53,6 +56,28 @@ def load_pretrain_embed(embedding_path, max_scan_num=1000000, add_seg_vocab=Fals
 
     return embed_dict, embed_dim
 
+def build_radical_embeddings(embedding_path):
+    radical_embed_dict = dict()
+    radical_list = list()
+    with open(embedding_path, 'r', encoding='utf8') as f:
+        for idx, line in tqdm(enumerate(f)):
+            items = line.strip().split()
+            character = items[0]
+            radical_embed_dim = len(items) - 1
+            embedding = np.empty([1, radical_embed_dim])
+            embedding[:] = items[1:]
+            radical_embed_dict[character] = embedding
+            radical_list.append(character)
+    radical_vocab = ItemVocabArray(radical_list, is_word=True, has_default=False)
+    embed_dim = next(iter(radical_embed_dict.values())).size
+    scale = np.sqrt(3.0 / embed_dim)
+    radical_embedding = np.empty([radical_vocab.item_size, embed_dim])
+    for idx, word in enumerate(radical_vocab.idx2item):
+        if word in radical_list:
+            radical_embedding[idx, :] = radical_embed_dict[word]
+        else:
+            radical_embedding[idx, :] = np.random.uniform(-scale, scale, [1, embed_dim])
+    return radical_embedding, radical_vocab, embed_dim
 
 def build_pretrained_embedding_for_corpus(
         embedding_path,

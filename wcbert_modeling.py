@@ -20,6 +20,8 @@ from torch.nn import CrossEntropyLoss, MSELoss
 
 from transformers.activations import gelu, gelu_new, ACT2FN
 from transformers.configuration_bert import BertConfig
+from transformers.modeling_outputs import BaseModelOutputWithPooling
+
 from module.crf import CRF
 from module.bilstm import BiLSTM
 
@@ -220,6 +222,7 @@ class BertEncoder(nn.Module):
             hidden_states,
             attention_mask=None,
             input_word_embeddings=None,
+            input_radical_embeddings=None,
             input_word_mask=None,
             head_mask=None,
             encoder_hidden_states=None,
@@ -346,6 +349,7 @@ class WCBertModel(BertPreTrainedModel):
         attention_mask=None,
         token_type_ids=None,
         matched_word_embeddings=None,
+        matched_radical_embeddings = None,
         matched_word_mask=None,
         boundary_ids=None,
         position_ids=None,
@@ -435,6 +439,7 @@ class WCBertModel(BertPreTrainedModel):
             embedding_output,
             attention_mask=extended_attention_mask,
             input_word_embeddings=matched_word_embeddings,
+            input_radical_embeddings = matched_radical_embeddings,
             input_word_mask=matched_word_mask,
             head_mask=head_mask,
             encoder_hidden_states=encoder_hidden_states,
@@ -457,7 +462,7 @@ class WCBertModel(BertPreTrainedModel):
         )
 
 class WCBertCRFForTokenClassification(BertPreTrainedModel):
-    def __init__(self, config, pretrained_embeddings, num_labels):
+    def __init__(self, config, pretrained_embeddings, num_labels, pretrained_radical_embeddings=None):
         super().__init__(config)
 
         word_vocab_size = pretrained_embeddings.shape[0]
@@ -473,11 +478,17 @@ class WCBertCRFForTokenClassification(BertPreTrainedModel):
 
         ## init the embedding
         self.word_embeddings.weight.data.copy_(torch.from_numpy(pretrained_embeddings))
+
+        radical_vocab_size = pretrained_radical_embeddings.shape[0]
+        radical_embed_dim = pretrained_radical_embeddings.shape[1]
+        self.radical_embeddings = nn.Embedding(radical_vocab_size, radical_embed_dim)
+        self.radical_embeddings.weight.data.copy_(torch.from_numpy(pretrained_radical_embeddings))
         print("Load pretrained embedding from file.........")
 
     def forward(
             self,
             input_ids=None,
+            radical_ids = None,
             attention_mask=None,
             token_type_ids=None,
             matched_word_ids=None,
@@ -487,11 +498,13 @@ class WCBertCRFForTokenClassification(BertPreTrainedModel):
             flag="Train"
     ):
         matched_word_embeddings = self.word_embeddings(matched_word_ids)
+        matched_radical_embeddings = self.radical_embeddings(radical_ids)
         outputs = self.bert(
             input_ids=input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             matched_word_embeddings=matched_word_embeddings,
+            matched_radical_embeddings=matched_radical_embeddings,
             matched_word_mask=matched_word_mask,
             boundary_ids=boundary_ids
         )
