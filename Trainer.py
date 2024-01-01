@@ -499,7 +499,7 @@ def main():
     #     args.n_gpu = 0
     #################################################
 
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() and args.device == 'gpu' else "cpu")
+    args.device = torch.device("cuda:1" if torch.cuda.is_available() and args.device == 'gpu' else "cpu")
     logger.info(
         "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
         args.local_rank,

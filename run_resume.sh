@@ -21,4 +21,4 @@ nohup python Trainer.py --do_eval --do_predict --evaluate_during_training \
     --num_train_epochs=20 \
     --warmup_steps=190 \
     --save_steps=600 \
-    --logging_steps=300 > resLogs/resume-3.log 2>&1 &
+    --logging_steps=300 > resLogs/resume-no-word.log 2>&1 &

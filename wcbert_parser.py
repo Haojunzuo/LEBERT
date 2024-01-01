@@ -13,7 +13,7 @@ def get_argparse():
     parser.add_argument("--logging_dir", default='data/log', type=str, help="the dir for log")
 
     ## for from_pretrained parameters
-    parser.add_argument("--model_name_or_path", default="/mnt/cjhb/NER/LEBERT/data/berts/bert", type=str, help="the pretrained bert path")
+    parser.add_argument("--model_name_or_path", default="data/berts/bert", type=str, help="the pretrained bert path")
     parser.add_argument("--model_type", default="WCBertCRF_Token", type=str,
                         help="Bert_Token, BertCRF_Token, BertBiLSTMCRF_Token, WCBert_Token, WC....")
     parser.add_argument("--config_name", default="data/berts/bert/config.json", type=str, help="the config of define model")

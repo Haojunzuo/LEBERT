@@ -92,7 +92,7 @@ class BertLayer(nn.Module):
     we modify the module to add word embedding information into the transformer
     """
 
-    def __init__(self, config, has_word_attn=False):
+    def __init__(self, config, has_word_attn=True, has_radical_emb=False):
         super().__init__()
 
         self.chunk_size_feed_forward = config.chunk_size_feed_forward
@@ -117,6 +117,13 @@ class BertLayer(nn.Module):
             self.attn_W.data.normal_(mean=0.0, std=config.initializer_range)
             self.fuse_layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
+        self.has_radical_emb = has_radical_emb
+        if self.has_radical_emb:
+            self.dropout_radical = nn.Dropout(config.hidden_dropout_prob)
+            self.act_radical = nn.Tanh()
+            self.radical_transform = nn.Linear(config.radical_embed_dim, config.hidden_size)
+            self.fuse_layernorm_radical = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
 
@@ -125,6 +132,7 @@ class BertLayer(nn.Module):
             hidden_states,
             attention_mask=None,
             input_word_embeddings=None,
+            input_radical_embeddings=None,
             input_word_mask=None,
             head_mask=None,
             encoder_hidden_states=None,
@@ -170,8 +178,29 @@ class BertLayer(nn.Module):
         layer_output = apply_chunking_to_forward(
             self.feed_forward_chunk, self.chunk_size_feed_forward, self.seq_len_dim, attention_output
         )
+        if self.has_word_attn and self.has_radical_emb:
+            word_outputs = self.word_transform(input_word_embeddings)  # [N, L, W, D]
+            word_outputs = self.act(word_outputs)
+            word_outputs = self.word_word_weight(word_outputs)
+            word_outputs = self.dropout(word_outputs)
 
-        if self.has_word_attn:
+            # attention_output = attention_output.unsqueeze(2) # [N, L, D] -> [N, L, 1, D]
+            alpha = torch.matmul(layer_output.unsqueeze(2), self.attn_W)  # [N, L, 1, D]
+            alpha = torch.matmul(alpha, torch.transpose(word_outputs, 2, 3))  # [N, L, 1, W]
+            alpha = alpha.squeeze()  # [N, L, W]
+            alpha = alpha + (1 - input_word_mask.float()) * (-10000.0)
+            alpha = torch.nn.Softmax(dim=-1)(alpha)  # [N, L, W]
+            alpha = alpha.unsqueeze(-1)  # [N, L, W, 1]
+            weighted_word_embedding = torch.sum(word_outputs * alpha, dim=2)  # [N, L, D]
+
+            radical_outputs = self.radical_transform(input_radical_embeddings)
+            radical_outputs = self.act_radical(radical_outputs)
+            radical_outputs = self.dropout_radical(radical_outputs)
+
+            layer_output = layer_output + weighted_word_embedding + radical_outputs
+            layer_output = self.dropout(layer_output)
+            layer_output = self.fuse_layernorm(layer_output)
+        elif self.has_word_attn:
             assert input_word_mask is not None
 
             # transform
@@ -193,6 +222,15 @@ class BertLayer(nn.Module):
             layer_output = self.dropout(layer_output)
             layer_output = self.fuse_layernorm(layer_output)
 
+        elif self.has_radical_emb:
+            radical_outputs = self.radical_transform(input_radical_embeddings)
+            radical_outputs = self.act_radical(radical_outputs)
+            radical_outputs = self.dropout_radical(radical_outputs)
+
+            layer_output = layer_output + radical_outputs
+            layer_output = self.dropout_radical(layer_output)
+            layer_output = self.fuse_layernorm_radical(layer_output)
+
         outputs = (layer_output,) + outputs
         return outputs
 
@@ -210,10 +248,10 @@ class BertEncoder(nn.Module):
 
         total_layers = []
         for i in range(config.num_hidden_layers):
-            if i in self.add_layers:
-                total_layers.append(BertLayer(config, True))
+            if i in self.add_layers:  # 设置适配器选项(config, has_word, has_radical)
+                total_layers.append(BertLayer(config, False, False))
             else:
-                total_layers.append(BertLayer(config, False))
+                total_layers.append(BertLayer(config, False, False))
 
         self.layer = nn.ModuleList(total_layers)
 
@@ -240,7 +278,7 @@ class BertEncoder(nn.Module):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             layer_head_mask = head_mask[i] if head_mask is not None else None
-
+            # 使用断点直接加载
             if getattr(self.config, "gradient_checkpointing", False):
 
                 def create_custom_forward(module):
@@ -254,6 +292,7 @@ class BertEncoder(nn.Module):
                     hidden_states,
                     attention_mask,
                     input_word_embeddings,
+                    input_radical_embeddings,
                     input_word_mask,
                     layer_head_mask,
                     encoder_hidden_states,
@@ -264,6 +303,7 @@ class BertEncoder(nn.Module):
                     hidden_states,
                     attention_mask,
                     input_word_embeddings,
+                    input_radical_embeddings,
                     input_word_mask,
                     layer_head_mask,
                     encoder_hidden_states,
